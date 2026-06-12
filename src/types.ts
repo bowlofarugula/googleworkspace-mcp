@@ -25,6 +25,12 @@ export interface Props {
   refreshToken: string;
   /** Lifetime of the access token in seconds, as reported by Google `expires_in`. */
   expiresIn: number;
+  /**
+   * Space-delimited scopes Google actually granted (token response `scope`). The
+   * callback rejects partial grants, so this should match GOOGLE_SCOPES; kept for
+   * diagnostics and so tools could explain scope errors.
+   */
+  grantedScopes?: string;
   /** Google identity, for the grant label and the whoami tool. */
   user: GoogleUser;
   [key: string]: unknown;

@@ -44,6 +44,42 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/presentations",
 ].join(" ");
 
+/** Canonical form of a scope for granted-vs-requested comparison. */
+function canonicalScope(s: string): string {
+  if (s === "email") return "https://www.googleapis.com/auth/userinfo.email";
+  if (s === "profile") return "https://www.googleapis.com/auth/userinfo.profile";
+  return s;
+}
+
+/** Friendly checkbox names for the missing-permissions error. */
+const SCOPE_LABELS: Record<string, string> = {
+  "https://www.googleapis.com/auth/userinfo.email": "Basic profile (email address)",
+  "https://www.googleapis.com/auth/userinfo.profile": "Basic profile (name)",
+  "https://www.googleapis.com/auth/drive.file": "Google Drive (files created with this app)",
+  "https://www.googleapis.com/auth/gmail.send": "Gmail (send email)",
+  "https://www.googleapis.com/auth/gmail.compose": "Gmail (manage drafts)",
+  "https://www.googleapis.com/auth/calendar.events": "Google Calendar (events)",
+  "https://www.googleapis.com/auth/tasks": "Google Tasks",
+  "https://www.googleapis.com/auth/documents": "Google Docs",
+  "https://www.googleapis.com/auth/spreadsheets": "Google Sheets",
+  "https://www.googleapis.com/auth/presentations": "Google Slides",
+};
+
+/**
+ * Which requested scopes Google did NOT grant. Google's granular-consent screen lets
+ * the user uncheck individual permissions and the token exchange still succeeds, so a
+ * "connected" grant can silently lack e.g. Sheets — tool calls then 403 with
+ * ACCESS_TOKEN_SCOPE_INSUFFICIENT and the connector looks broken. "openid" is implicit
+ * in the response and userinfo can come back as the email/profile shorthand, so
+ * canonicalize both sides before comparing.
+ */
+export function missingGoogleScopes(granted: string | undefined): string[] {
+  const have = new Set((granted ?? "").split(/\s+/).filter(Boolean).map(canonicalScope));
+  return GOOGLE_SCOPES.split(" ")
+    .filter((s) => s !== "openid")
+    .filter((s) => !have.has(canonicalScope(s)));
+}
+
 /** Shape of a successful Google token response. */
 export interface GoogleTokenResponse {
   access_token: string;
@@ -313,6 +349,20 @@ app.get("/callback", async (c) => {
     return c.text("Token exchange failed", 502);
   }
 
+  // Granular consent: refuse a partial grant NOW, with the unchecked boxes by name,
+  // instead of issuing a connection that fails later on whichever tool lost its scope.
+  const missing = missingGoogleScopes(tokens.scope);
+  if (missing.length > 0) {
+    const names = missing.map((s) => SCOPE_LABELS[s] ?? s).join(", ");
+    return c.text(
+      `Google sign-in is missing required permissions: ${names}.\n\n` +
+        "This usually means some checkboxes were left unchecked on Google's consent " +
+        "screen. Please start the connection again and leave every permission checkbox " +
+        'checked ("Select all" if shown) — the sign-in always re-prompts for consent.',
+      400,
+    );
+  }
+
   if (!tokens.refresh_token) {
     // No refresh token — refresh would be impossible. Fail loudly rather than issue a
     // grant that breaks on first refresh. Usually means a prior consent already granted
@@ -333,6 +383,7 @@ app.get("/callback", async (c) => {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       expiresIn: tokens.expires_in,
+      grantedScopes: tokens.scope,
       user,
     },
     request: oauthReqInfo,

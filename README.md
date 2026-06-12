@@ -110,6 +110,12 @@ MCP client ──/mcp (bearer)──▶ McpAgent: props decrypted into this.prop
 - A refresh token is only issued on **first consent**; sign-in uses `prompt=consent` so a
   re-auth always re-establishes it. (If Google ever returns no refresh token, revoke the app
   at <https://myaccount.google.com/permissions> and sign in again.)
+- **Partial grants are rejected at the callback.** Google's granular-consent screen lets the
+  user uncheck individual permissions and the token exchange still succeeds — the connection
+  would look fine until the first tool call 403s (`ACCESS_TOKEN_SCOPE_INSUFFICIENT`). The
+  callback compares the granted `scope` against `GOOGLE_SCOPES` and refuses with the missing
+  permissions listed by name, telling the user to sign in again with every checkbox checked
+  (re-prompting is guaranteed by `prompt=consent`).
 
 ### Access control (portal lockdown)
 

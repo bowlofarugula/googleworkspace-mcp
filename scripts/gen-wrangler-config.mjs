@@ -26,10 +26,29 @@ if (!id || id === PLACEHOLDER) {
   process.exit(1);
 }
 
-const config = readFileSync("wrangler.jsonc", "utf8");
+let config = readFileSync("wrangler.jsonc", "utf8");
 if (!config.includes(PLACEHOLDER)) {
   console.error(`Expected the ${PLACEHOLDER} placeholder in wrangler.jsonc; not found.`);
   process.exit(1);
 }
-writeFileSync("wrangler.generated.jsonc", config.replaceAll(PLACEHOLDER, id));
-console.log("Wrote wrangler.generated.jsonc (OAUTH_KV id injected).");
+config = config.replaceAll(PLACEHOLDER, id);
+
+// Deployment-specific var overrides from .env/environment (optional). The tracked
+// wrangler.jsonc keeps generic defaults; real allowlist values live in .env so
+// `npm run deploy` reproduces the live config instead of clobbering it.
+const injected = [];
+for (const name of ["PORTAL_REDIRECT_URI", "PORTAL_REDIRECT_URI_PREFIXES"]) {
+  const value = process.env[name];
+  if (value === undefined) continue;
+  const re = new RegExp(`("${name}"\\s*:\\s*)"[^"]*"`);
+  if (!re.test(config)) {
+    console.error(`Expected a "${name}" var in wrangler.jsonc; not found.`);
+    process.exit(1);
+  }
+  config = config.replace(re, `$1${JSON.stringify(value)}`);
+  injected.push(name);
+}
+
+writeFileSync("wrangler.generated.jsonc", config);
+const extras = injected.length ? ` + ${injected.join(", ")}` : "";
+console.log(`Wrote wrangler.generated.jsonc (OAUTH_KV id${extras} injected).`);
