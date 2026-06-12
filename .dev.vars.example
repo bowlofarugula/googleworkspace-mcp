@@ -1,0 +1,10 @@
+# Copy to .dev.vars for local `wrangler dev`. In production these are set as
+# Worker secrets via `wrangler secret put <NAME>` (see README).
+GOOGLE_CLIENT_ID="your-google-oauth-web-app-client-id"
+GOOGLE_CLIENT_SECRET="your-google-oauth-web-app-client-secret"
+# openssl rand -hex 32
+COOKIE_ENCRYPTION_KEY="generate-a-random-32-byte-hex-string"
+# Optional: override the /authorize redirect_uri allowlist for local dev. The committed
+# wrangler.jsonc locks this to the MCP portal's callback; to sign in directly with the MCP
+# Inspector or scripts/e2e.py against `wrangler dev`, allow that client's redirect here.
+# PORTAL_REDIRECT_URI="http://localhost:6274/oauth/callback,http://localhost:8976/callback"

@@ -1,0 +1,39 @@
+{
+  "name": "googleworkspace-mcp",
+  "version": "1.0.0",
+  "description": "Remote MCP server on Cloudflare Workers exposing Google Workspace (Gmail, Calendar, Drive, Docs, Sheets, Slides, Tasks) write/automation via direct REST, with Google OAuth.",
+  "private": true,
+  "type": "module",
+  "author": "Ian McDonald",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bowlofarugula/googleworkspace-mcp.git"
+  },
+  "homepage": "https://github.com/bowlofarugula/googleworkspace-mcp#readme",
+  "scripts": {
+    "gen-config": "node scripts/gen-wrangler-config.mjs",
+    "dev": "npm run gen-config && wrangler dev --config wrangler.generated.jsonc",
+    "deploy": "npm run gen-config && wrangler deploy --config wrangler.generated.jsonc",
+    "pretypecheck": "wrangler types",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt src",
+    "format:check": "oxfmt --check src",
+    "cf-typegen": "wrangler types"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.7.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "agents": "^0.14.5",
+    "hono": "^4.12.23",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.53.0",
+    "oxlint": "^1.68.0",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.98.0"
+  }
+}
